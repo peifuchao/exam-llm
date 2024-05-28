@@ -1,4 +1,4 @@
-本项目基于https://github.com/qiutiandefeng/yfexam-exam.git开发，再次基础上加入大语言模型应用，添加AI自动生成题目解析，自动生成考试题目的功能。
+本项目基于  https://github.com/qiutiandefeng/yfexam-exam.git  开发，在此基础上加入大语言模型应用，添加AI自动生成题目解析，自动生成考试题目的功能。
 
 
 # 环境要求
