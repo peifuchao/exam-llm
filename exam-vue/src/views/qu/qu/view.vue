@@ -5,7 +5,7 @@
 
       <div class="qu-content">
 
-        <p>【{{ quData.quType===1?'单选题':'多选题' }}】{{ quData.content }}</p>
+        <p>【{{ quData.quType===1?'单选题':quData.quType===2? '多选题':'判断题' }}】{{ quData.content }}</p>
         <p v-if="quData.image!=null && quData.image!=''">
           <el-image :src="quData.image" style="max-width:80%;" />
         </p>
@@ -29,7 +29,8 @@
     <el-card class="qu-analysis" style="margin-top: 20px">
       整题解析：
       <p>{{ quData.analysis }}</p>
-      <p v-if="!quData.analysis">暂无解析内容！</p>
+      <p v-if="!quData.analysis">点击按钮查看解析！</p>
+      <el-button aria-disabled="false" type="primary" class="el-button el-button--primary" v-bind:disabled = "isButtonClicked" @click="getAnalysis(quData.id)"><!--v-if--><span class="">查看解析</span></el-button>
     </el-card>
 
     <el-card class="qu-analysis" style="margin-top: 20px; margin-bottom: 30px">
@@ -42,19 +43,34 @@
 
     </el-card>
 
-    <el-button type="info" @click="onCancel">返回</el-button>
+    <el-button type="button" class="el-button el-button--primary" @click="onCancel">返回</el-button>
+
+    <el-dialog
+      :visible.sync="loadingDialogVisible"
+      :modal="false"
+      :close-on-click-modal="false"
+      :close-on-press-escape="false"
+      title="请稍等"
+      width="400px"
+      :show-close="false"
+      style="border-radius: 3px;"
+      center
+    >
+      <span>正在生成，请稍后...</span>
+    </el-dialog>
 
   </div>
 </template>
 
 <script>
-import { fetchDetail } from '@/api/qu/qu'
+import { fetchDetail, fetchAnalysis } from '@/api/qu/qu'
 
 export default {
   name: 'QuView',
   data() {
     return {
-
+      isButtonClicked: false,
+      loadingDialogVisible: false,
       quData: {
 
       },
@@ -76,6 +92,7 @@ export default {
     fetchData(id) {
       fetchDetail(id).then(response => {
         this.quData = response.data
+        console.log(this.quData)
 
         this.quData.answerList.forEach((an) => {
           // 解析数量
@@ -89,11 +106,20 @@ export default {
               this.radioValues = an.id
             } else {
               this.multiValues.push(an.id)
-            }
+            }                                                                                    
           }
         })
       })
     },
+    getAnalysis(id) {
+      this.isButtonClicked = true,
+      this.loadingDialogVisible = true
+      fetchAnalysis(id).then(response => {
+        this.quData.analysis = response.data
+        this.loadingDialogVisible = false
+      })
+    }
+    ,
     onCancel() {
       this.$router.push({ name: 'ListTran' })
     }

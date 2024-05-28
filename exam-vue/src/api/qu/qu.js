@@ -8,6 +8,16 @@ export function fetchDetail(id) {
   return post('/exam/api/qu/qu/detail', { id: id })
 }
 
+export function fetchAnalysis(id) {
+  return post('/exam/api/qu/qu/analysis', { id: id })
+}
+
+export function generate(data) {
+
+  
+  return post('/exam/api/qu/qu/generate', {type:data.type,subject:data.subject,level:data.level,number:data.number,repoIds:data.repos})
+}
+
 /**
  * 保存题库
  * @param data

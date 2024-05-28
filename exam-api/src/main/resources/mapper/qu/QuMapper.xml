@@ -103,4 +103,23 @@
         LIMIT 10000
     </select>
 
+
+<!--    QuDTO queryQu(@Param("content") String content);-->
+
+    <select id="queryQu" resultType="com.yf.exam.modules.qu.dto.QuDTO">
+        SELECT * FROM el_qu WHERE content=#{content}
+    </select>
+
+<!--    /**-->
+<!--    * 插入题目-->
+<!--    * @param 题目ID-->
+<!--    * @return 题目-->
+<!--    */-->
+
+<!--    int insertQu(QuDTO qu);-->
+    <insert id="insertQu" parameterType="com.yf.exam.modules.qu.dto.QuDTO">
+        INSERT INTO el_qu (id, qu_type, level, image, content, create_time, update_time, remark, analysis)
+        VALUES (#{id}, #{quType}, #{level}, #{image}, #{content}, #{createTime}, #{updateTime}, #{remark}, #{analysis})
+    </insert>
+
 </mapper>

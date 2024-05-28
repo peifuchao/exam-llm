@@ -4,12 +4,14 @@
     <div class="filter-container">
 
       <slot name="filter-content" />
-
-      <el-row>
-        <el-col>
-          <el-button v-if="options.addRoute" type="primary" icon="el-icon-plus" @click="handleAdd">添加</el-button>
-        </el-col>
-      </el-row>
+<el-row style="display: flex">
+  <el-col style=" width: 100px">
+    <el-button v-if="options.addRoute" type="primary" icon="el-icon-plus" @click="handleAdd">添加</el-button>
+  </el-col>
+  <el-col style="width: 100px">
+    <el-button v-if="options.isAdd" type="primary" class="el-button el-button--primary" @click="showAddDialog">自动生成</el-button>
+  </el-col>
+</el-row>
 
     </div>
 
@@ -48,7 +50,11 @@
     </el-table>
 
     <pagination v-show="dataList.total>0" :total="dataList.total" :page.sync="listQuery.current" :limit.sync="listQuery.size" @pagination="getList" />
+
+     
   </div>
+
+  
 </template>
 
 <script>
@@ -244,6 +250,9 @@ export default {
       this.selectedLabel = '已选' + ids.length + '项'
 
       this.$emit('select-changed', { ids: this.selectedIds, objs: this.selectedObjs })
+    },
+    showAddDialog() {
+      this.options.showAddQu = true
     }
 
   }

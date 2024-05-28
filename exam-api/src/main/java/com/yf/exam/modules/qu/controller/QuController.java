@@ -5,10 +5,7 @@ import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.google.common.collect.Lists;
 import com.yf.exam.core.api.ApiRest;
 import com.yf.exam.core.api.controller.BaseController;
-import com.yf.exam.core.api.dto.BaseIdReqDTO;
-import com.yf.exam.core.api.dto.BaseIdRespDTO;
-import com.yf.exam.core.api.dto.BaseIdsReqDTO;
-import com.yf.exam.core.api.dto.PagingReqDTO;
+import com.yf.exam.core.api.dto.*;
 import com.yf.exam.core.exception.ServiceException;
 import com.yf.exam.core.utils.BeanMapper;
 import com.yf.exam.core.utils.excel.ExportExcel;
@@ -33,20 +30,21 @@ import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 
+import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.List;
 
 /**
-* <p>
-* 问题题目控制器
-* </p>
-*
-* @author 聪明笨狗
-* @since 2020-05-25 13:25
-*/
-@Api(tags={"问题题目"})
+ * <p>
+ * 问题题目控制器
+ * </p>
+ *
+ * @author 聪明笨狗
+ * @since 2020-05-25 13:25
+ */
+@Api(tags = {"问题题目"})
 @RestController
 @RequestMapping("/exam/api/qu/qu")
 public class QuController extends BaseController {
@@ -279,6 +277,7 @@ public class QuController extends BaseController {
         }
     }
 
+
     /**
      * 下载导入试题数据模板
      */
@@ -325,7 +324,6 @@ public class QuController extends BaseController {
             l4.setAAnalysis("6除以2=3，对的");
 
 
-
             list.add(l1);
             list.add(l2);
             list.add(l3);
@@ -334,7 +332,36 @@ public class QuController extends BaseController {
             new ExportExcel("试题数据", QuExportDTO.class, 1).setDataList(list).write(response, fileName).dispose();
             return super.success();
         } catch (Exception e) {
-            return super.failure("导入模板下载失败！失败信息："+e.getMessage());
+            return super.failure("导入模板下载失败！失败信息：" + e.getMessage());
         }
     }
+
+    /**
+     * 生成试题分析
+     *
+     * @param id
+     * @return
+     */
+
+    @ApiOperation(value = "生成试题分析")
+    @RequestMapping(value = "/analysis")
+    public ApiRest<String> generateAnalysis(@RequestBody BaseIdReqDTO reqDTO) {
+        String analysis = baseService.generateAnalysis(reqDTO.getId());
+        return super.success(analysis);
+    }
+
+    @ApiOperation(value = "生成试题")
+    @RequestMapping(value = "/generate")
+    public ApiRest generate(@RequestBody BaseGeneDTO reqDTO) {
+
+//        System.out.println("type:" + reqDTO.getType());
+//        System.out.println("subject:" + reqDTO.getSubject());
+//        System.out.println("level:" + reqDTO.getLevel());
+//        System.out.println("num:" + reqDTO.getNumber());
+//        System.out.println("repoIds:" + Arrays.toString(reqDTO.getRepoIds()));
+        int count = baseService.generateQuestion(reqDTO.getType(), reqDTO.getSubject(), reqDTO.getLevel(), Integer.parseInt(reqDTO.getNumber()),reqDTO.getRepoIds());
+        return count > 0 ? super.success() : super.failure();
+    }
+
+
 }

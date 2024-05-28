@@ -89,7 +89,7 @@ export default {
     const id = this.$route.params.examId
     if (typeof id !== 'undefined') {
       this.listQuery.params.examId = id
-      this.fetchData(id)
+      // this.fetchData(id)
     }
   },
   methods: {

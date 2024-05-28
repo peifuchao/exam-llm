@@ -1,17 +1,22 @@
 package com.yf.exam.modules.qu.service.impl;
 
+import cn.hutool.poi.excel.cell.CellSetter;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.yf.exam.core.api.dto.PagingReqDTO;
 import com.yf.exam.core.exception.ServiceException;
 import com.yf.exam.core.utils.BeanMapper;
+import com.yf.exam.llm.ChatAgent;
 import com.yf.exam.modules.qu.dto.QuAnswerDTO;
 import com.yf.exam.modules.qu.dto.QuDTO;
 import com.yf.exam.modules.qu.dto.export.QuExportDTO;
 import com.yf.exam.modules.qu.dto.ext.QuDetailDTO;
 import com.yf.exam.modules.qu.dto.request.QuQueryReqDTO;
+import com.yf.exam.modules.qu.entity.GQuestion;
 import com.yf.exam.modules.qu.entity.Qu;
 import com.yf.exam.modules.qu.entity.QuAnswer;
 import com.yf.exam.modules.qu.entity.QuRepo;
@@ -27,11 +32,8 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.CollectionUtils;
 import org.springframework.util.StringUtils;
 
-import java.util.ArrayList;
-import java.util.Date;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.io.IOException;
+import java.util.*;
 
 /**
  * <p>
@@ -52,6 +54,9 @@ public class QuServiceImpl extends ServiceImpl<QuMapper, Qu> implements QuServic
 
     @Autowired
     private RepoService repoService;
+
+    @Autowired
+    private ChatAgent chatAgent;
 
     @Override
     public IPage<QuDTO> paging(PagingReqDTO<QuQueryReqDTO> reqDTO) {
@@ -113,6 +118,7 @@ public class QuServiceImpl extends ServiceImpl<QuMapper, Qu> implements QuServic
 
         Qu qu = new Qu();
         BeanMapper.copy(reqDTO, qu);
+
 
         // 更新
         this.saveOrUpdate(qu);
@@ -201,6 +207,46 @@ public class QuServiceImpl extends ServiceImpl<QuMapper, Qu> implements QuServic
         return count;
     }
 
+    @Override
+    public String generateAnalysis(String id) {
+        Qu qu = this.getById(id);
+
+
+
+        List<QuAnswerDTO> answers = quAnswerService.listByQu(qu.getId());
+
+
+        String message=this.formatMessage(qu, answers);
+
+        System.out.println(message);
+
+        return chatAgent.chat(message);
+    }
+
+    private String formatMessage(Qu qu, List<QuAnswerDTO> answers) {
+
+        StringBuilder sb = new StringBuilder();
+        sb.append("生成解析：\n");
+        if(qu.getQuType()==1)
+            sb.append("单选题:");
+        else
+            sb.append("多选题：");
+        sb.append("\n");
+        sb.append("题目：").append(qu.getContent()).append("\n");
+        sb.append("选项：").append("\n");
+        for (QuAnswerDTO a : answers) {
+            sb.append(a.getContent()).append("\n");
+        }
+        sb.append("正确答案：");
+        for (QuAnswerDTO a : answers) {
+            if (a.getIsRight()) {
+                sb.append(a.getContent()).append(" ");
+            }
+        }
+        return sb.toString();
+
+    }
+
     /**
      * 处理回答列表
      *
@@ -243,36 +289,132 @@ public class QuServiceImpl extends ServiceImpl<QuMapper, Qu> implements QuServic
         List<QuAnswerDTO> answers = qu.getAnswerList();
 
 
-            if (CollectionUtils.isEmpty(answers)) {
-                throw new ServiceException(1, no + "客观题至少要包含一个备选答案！");
+        if (CollectionUtils.isEmpty(answers)) {
+            throw new ServiceException(1, no + "客观题至少要包含一个备选答案！");
+        }
+
+
+        int trueCount = 0;
+        for (QuAnswerDTO a : answers) {
+
+            if (a.getIsRight() == null) {
+                throw new ServiceException(1, no + "必须定义选项是否正确项！");
             }
 
-
-            int trueCount = 0;
-            for (QuAnswerDTO a : answers) {
-
-                if (a.getIsRight() == null) {
-                    throw new ServiceException(1, no + "必须定义选项是否正确项！");
-                }
-
-                if (StringUtils.isEmpty(a.getContent())) {
-                    throw new ServiceException(1, no + "选项内容不为空！");
-                }
-
-                if (a.getIsRight()) {
-                    trueCount += 1;
-                }
+            if (StringUtils.isEmpty(a.getContent())) {
+                throw new ServiceException(1, no + "选项内容不为空！");
             }
 
-            if (trueCount == 0) {
-                throw new ServiceException(1, no + "至少要包含一个正确项！");
+            if (a.getIsRight()) {
+                trueCount += 1;
             }
+        }
+
+        if (trueCount == 0) {
+            throw new ServiceException(1, no + "至少要包含一个正确项！");
+        }
 
 
-            //单选题
-            if (qu.getQuType().equals(QuType.RADIO) && trueCount > 1) {
-                throw new ServiceException(1, no + "单选题不能包含多个正确项！");
-            }
+        //单选题
+        if (qu.getQuType().equals(QuType.RADIO) && trueCount > 1) {
+            throw new ServiceException(1, no + "单选题不能包含多个正确项！");
+        }
 
     }
+
+    /**
+     * 生成题目
+     *
+     */
+    public int generateQuestion(String type,String subject, String level, int num,String[] repoIds){
+
+        String message = formatQuestionMsg(type,subject,level,num);
+
+        String json = chatAgent.chat(message);
+
+
+
+        json = json.substring(1,json.length()-1);
+        json = json.replace("\"questions\": ","");
+
+        ObjectMapper mapper = new ObjectMapper();
+        List<GQuestion> questions=null;
+        try {
+            questions = mapper.readValue(json, new TypeReference<List<GQuestion>>(){});
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+
+        if(questions==null) return 0;
+        List<String> id= Arrays.asList(repoIds);
+
+
+        for(GQuestion q:questions){
+            QuDetailDTO qu = new QuDetailDTO();
+            qu.setContent(q.getQuestion());
+            qu.setCreateTime(new Date());
+            qu.setLevel(Integer.parseInt(level));
+            qu.setQuType(Integer.parseInt(type));
+            qu.setRepoIds(id);
+            List<QuAnswerDTO> answerList = getAnswerList(q.getAnswer(),q.getOptions());
+            qu.setAnswerList(answerList);
+
+            this.save(qu);
+        }
+        return questions.size();
+    }
+
+    private List<QuAnswerDTO> getAnswerList(String answer, String options) {
+        List<QuAnswerDTO> answerDTOS = new ArrayList<>();
+        String[] option = options.split(";");
+        String[] b = {"A.","B.","C.","D."};
+        if(options.contains("A.")){
+            for(int i=0;i<4;i++){
+                QuAnswerDTO answerDTO = new QuAnswerDTO();
+                answerDTO.setContent(option[i].replace(b[i],"").replace(" ",""));
+                answerDTO.setIsRight(answer.contains(b[i].substring(0, 1)));
+                answerDTOS.add(answerDTO);
+            }
+        }else{
+            for(String o : option){
+                QuAnswerDTO answerDTO = new QuAnswerDTO();
+                answerDTO.setContent(o);
+                answerDTO.setIsRight(answer.contains(o));
+                answerDTOS.add(answerDTO);
+            }
+        }
+
+        return answerDTOS;
+
+    }
+
+
+    private String formatQuestionMsg(String type, String subject, String level, int num) {
+
+        StringBuilder sb = new StringBuilder();
+        sb.append("生成题目：\n");
+
+        sb.append("题目类型：");
+        if(type.equals("1"))
+            sb.append("单选题:");
+        else if(type.equals("2"))
+            sb.append("多选题：");
+        else
+            sb.append("判断题：");
+        sb.append("\n");
+
+        sb.append("科目：").append(subject).append("\n");
+
+
+        sb.append("难度：");
+        if(level.equals("1"))
+            sb.append("普通");
+        else
+            sb.append("较难");
+       sb.append("\n");
+        sb.append("数量：").append(num).append("\n");
+        return sb.toString();
+    }
+
+
 }

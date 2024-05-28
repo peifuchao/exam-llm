@@ -74,4 +74,22 @@ public interface QuService extends IService<Qu> {
      * @return
      */
     int importExcel(List<QuExportDTO> dtoList);
+
+
+    /**
+     * 生成试题分析
+     * @param id 试题id
+     * @return 生成的解析
+     */
+    String generateAnalysis(String id);
+
+    /**
+     * 生成试题
+     * @param type 试题类型
+     * @param subject 科目
+     * @param level 难度等级
+     * @param num 生成数量
+     * @return 生成的试题
+     */
+    int generateQuestion(String type,String subject, String level, int num,String[] repoIds);
 }

@@ -52,5 +52,24 @@ public interface QuMapper extends BaseMapper<Qu> {
      */
     IPage<QuDTO> paging(Page page, @Param("query") QuQueryReqDTO query);
 
+    /**
+     * 查找题目详情
+     * @param 题目完整名称
+     * @return 题目
+     */
+
+    QuDTO queryQu(@Param("content") String content);
+
+    /**
+     * 插入题目
+     * @param 题目ID
+     * @return 题目
+     */
+
+    int insertQu(QuDTO qu);
+
+
+
+
 
 }
