@@ -4,7 +4,8 @@
 # 环境要求
 JDK 17  
 Mysql 8.0  
-maven 3.9.3
+maven 3.9.3  
+
 vue3
 
 # 开发环境
